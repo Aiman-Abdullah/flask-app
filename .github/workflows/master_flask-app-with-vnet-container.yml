@@ -1,0 +1,51 @@
+# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
+# More GitHub Actions for Azure: https://github.com/Azure/actions
+
+name: Build and deploy container app to Azure Web App - flask-app-with-vnet-container
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: 'ubuntu-latest'
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
+
+    - name: Log in to registry
+      uses: docker/login-action@v1
+      with:
+        registry: https://containeraiman.azurecr.io/
+        username: ${{ secrets.AzureAppService_ContainerUsername_4855b60abe284251ae96f372e49fe98f }}
+        password: ${{ secrets.AzureAppService_ContainerPassword_79ddf0f5100d4d7daa56da3e4778d95b }}
+
+    - name: Build and push container image to registry
+      uses: docker/build-push-action@v2
+      with:
+        push: true
+        tags: containeraiman.azurecr.io/${{ secrets.AzureAppService_ContainerUsername_4855b60abe284251ae96f372e49fe98f }}/ahmed_image3:${{ github.sha }}
+        file: ./Dockerfile
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: 'production'
+      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+
+    steps:
+    - name: Deploy to Azure Web App
+      id: deploy-to-webapp
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: 'flask-app-with-vnet-container'
+        slot-name: 'production'
+        publish-profile: ${{ secrets.AzureAppService_PublishProfile_801f8f99fc7b4e42a3d65c96947ce76c }}
+        images: 'containeraiman.azurecr.io/${{ secrets.AzureAppService_ContainerUsername_4855b60abe284251ae96f372e49fe98f }}/ahmed_image3:${{ github.sha }}'
